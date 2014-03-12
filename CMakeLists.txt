@@ -1,39 +1,40 @@
-
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
 
 PROJECT(libzippp)
 
 SET(PACKAGE "libzippp")
 SET(VERSION "0.1")
 
-SET(LIBZIP_PATH "lib/libzip-0.11.2" CACHE STRING "Path to libzip")
+SET(LIBZIP_ROOT "lib/libzip-0.11.2" CACHE STRING "Path to libzip")
 
-FIND_PACKAGE(ZLIB REQUIRED)
-INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
-set(CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIR})
-IF(ZLIB_VERSION_STRING VERSION_LESS "1.1.2")
-  MESSAGE(FATAL_ERROR "-- ZLIB version too old, please install at least v1.1.2")
-ENDIF(ZLIB_VERSION_STRING VERSION_LESS "1.1.2")
+find_package(LibZip REQUIRED)
+include_directories(${LIBZIP_INCLUDE_DIRS})
 
-INCLUDE_DIRECTORIES(${LIBZIP_PATH}/lib)
-INCLUDE_DIRECTORIES(${LIBZIP_PATH}/build)
 INCLUDE_DIRECTORIES("src")
+include_directories(${LIBZIP_ROOT}/include)
 
 add_definitions(-DLIBZIPPP_EXPORTS)
 ADD_LIBRARY(libzippp_shared SHARED "src/libzippp.cpp")
-SET_TARGET_PROPERTIES(libzippp_shared PROPERTIES OUTPUT_NAME libzippp)
-TARGET_LINK_LIBRARIES(libzippp_shared 
-						debug ../${LIBZIP_PATH}/build/lib/Debug/zip
-						optimized ../${LIBZIP_PATH}/build/lib/Release/zip
-						${ZLIB_LIBRARY})
+SET_TARGET_PROPERTIES(libzippp_shared PROPERTIES OUTPUT_NAME zippp)
+target_link_libraries(libzippp_shared ${LIBZIP_LIBRARIES})
 
 add_definitions(-DLIBZIPPP_EXPORTS)
 ADD_LIBRARY(libzippp_static STATIC "src/libzippp.cpp")
-#SET_TARGET_PROPERTIES(libzippp_static PROPERTIES OUTPUT_NAME libzippp)
-TARGET_LINK_LIBRARIES(libzippp_static 
-						debug ../${LIBZIP_PATH}/build/lib/Debug/zip
-						optimized ../${LIBZIP_PATH}/build/lib/Release/zip
-						${ZLIB_LIBRARY})
+target_link_libraries(libzippp_static ${LIBZIP_LIBRARIES})
 
-ADD_EXECUTABLE(libzippp_test "tests/tests.cpp")
-TARGET_LINK_LIBRARIES(libzippp_test libzippp_shared)
+install(TARGETS libzippp_shared
+   RUNTIME DESTINATION "bin"
+   LIBRARY DESTINATION "lib")
+
+install(TARGETS libzippp_static
+   ARCHIVE DESTINATION "lib")
+
+install(FILES "src/libzippp.h"
+   DESTINATION "include")
+
+option(BUILD_TESTS "Build tests" ON)
+if(BUILD_TESTS)
+   ADD_EXECUTABLE(libzippp_test "tests/tests.cpp")
+   TARGET_LINK_LIBRARIES(libzippp_test libzippp_shared)
+endif()
