@@ -1,4 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
 
 PROJECT(libzippp)
@@ -7,9 +8,14 @@ SET(PACKAGE "libzippp")
 SET(VERSION "0.1")
 
 SET(LIBZIP_ROOT "lib/libzip-0.11.2" CACHE STRING "Path to libzip")
+option(USE_ENTRY_CACHING "Store zip index in memory for faster access.")
+option(BUILD_TESTS "Build tests" ON)
 
 find_package(LibZip REQUIRED)
 include_directories(${LIBZIP_INCLUDE_DIRS})
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.in
+   ${CMAKE_CURRENT_BINARY_DIR}/libzippp-config.h)
 
 INCLUDE_DIRECTORIES("src")
 include_directories(${LIBZIP_ROOT}/include)
@@ -30,10 +36,9 @@ install(TARGETS libzippp_shared
 install(TARGETS libzippp_static
    ARCHIVE DESTINATION "lib")
 
-install(FILES "src/libzippp.h"
+install(FILES "src/libzippp.h" "${CMAKE_CURRENT_BINARY_DIR}/libzippp-config.h"
    DESTINATION "include")
 
-option(BUILD_TESTS "Build tests" ON)
 if(BUILD_TESTS)
    ADD_EXECUTABLE(libzippp_test "tests/tests.cpp")
    TARGET_LINK_LIBRARIES(libzippp_test libzippp_shared)

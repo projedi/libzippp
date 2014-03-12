@@ -103,6 +103,9 @@ bool ZipArchive::open(OpenMode om, bool checkConsistency) {
         }
         
         mode = om;
+#ifdef USE_ENTRY_CACHING
+        populateEntries();
+#endif
         return true;
     }
     
@@ -192,26 +195,28 @@ vector<ZipEntry> ZipArchive::getEntries(State state) const {
     return entries;
 }
 
+#ifdef USE_ENTRY_CACHING
+void ZipArchive::populateEntries() {
+    struct zip_stat stat;
+    zip_stat_init(&stat);
+    libzippp_int64 count = zip_get_num_entries(zipHandle, 0);
+    for(libzippp_int64 i=0 ; i != count ; ++i) {
+        int result = zip_stat_index(zipHandle, i, 0, &stat);
+        if(result) continue;
+        entries_[std::string(stat.name)] = stat.index;
+    }
+}
+#endif
+
 bool ZipArchive::hasEntry(const string& name, bool excludeDirectories, bool caseSensitive, State state) const {
     if (!isOpen()) { return false; }
-    
-    int flags = ZIP_FL_ENC_GUESS;
-    if (excludeDirectories) { flags = flags | ZIP_FL_NODIR; }
-    if (!caseSensitive) { flags = flags | ZIP_FL_NOCASE; }
-    if (state==ORIGINAL) { flags = flags | ZIP_FL_UNCHANGED; }
-    
-    libzippp_int64 index = zip_name_locate(zipHandle, name.c_str(), flags);
+    libzippp_int64 index = nameLocate(name, excludeDirectories, caseSensitive, state);
     return index>=0;
 }
 
 ZipEntry ZipArchive::getEntry(const string& name, bool excludeDirectories, bool caseSensitive, State state) const {
     if (isOpen()) {
-        int flags = ZIP_FL_ENC_GUESS;
-        if (excludeDirectories) { flags = flags | ZIP_FL_NODIR; }
-        if (!caseSensitive) { flags = flags | ZIP_FL_NOCASE; }
-        if (state==ORIGINAL) { flags = flags | ZIP_FL_UNCHANGED; }
-
-        libzippp_int64 index = zip_name_locate(zipHandle, name.c_str(), flags);
+        libzippp_int64 index = nameLocate(name, excludeDirectories, caseSensitive, state);
         if (index>=0) {
             return getEntry(index);
         } else {
@@ -219,6 +224,23 @@ ZipEntry ZipArchive::getEntry(const string& name, bool excludeDirectories, bool 
         }
     }
     return ZipEntry();
+}
+
+libzippp_int64 ZipArchive::nameLocate(std::string const& name, bool excludeDirectories,
+        bool caseSensitive, State state) const {
+#ifdef USE_ENTRY_CACHING
+    // TODO: Respect excludeDirectories, state, caseSensitive.
+    entry_map::const_iterator res = entries_.find(name);
+    if(res == entries_.end()) return -1;
+    return res->second;
+#else
+    int flags = ZIP_FL_ENC_GUESS;
+    if (excludeDirectories) { flags = flags | ZIP_FL_NODIR; }
+    if (!caseSensitive) { flags = flags | ZIP_FL_NOCASE; }
+    if (state==ORIGINAL) { flags = flags | ZIP_FL_UNCHANGED; }
+    libzippp_int64 index = zip_name_locate(zipHandle, name.c_str(), flags);
+    return index;
+#endif
 }
         
 ZipEntry ZipArchive::getEntry(libzippp_int64 index, State state) const {

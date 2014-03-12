@@ -40,6 +40,8 @@
 #include <string>
 #include <vector>
 
+#include "libzippp-config.h"
+
 struct zip;
 
 #define DIRECTORY_SEPARATOR '/'
@@ -73,6 +75,24 @@ typedef unsigned int uint;
         #define LIBZIPPP_API SHARED_LIBRARY_EXPORT
 #else
         #define LIBZIPPP_API SHARED_LIBRARY_IMPORT
+#endif
+
+#if defined(USE_ENTRY_CACHING) && defined(_MSC_VER)
+// On MSVC10 map is a lot faster than unordered_map.
+#include <map>
+namespace libzippp {
+   typedef std::map<std::string, libzippp_int64> entry_map;
+}
+#elif defined(USE_ENTRY_CACHING) && (__cplusplus >= 201103L)
+#include <unordered_map>
+namespace libzippp {
+   typedef std::unordered_map<std::string, libzippp_int64> entry_map;
+}
+#elif defined(USE_ENTRY_CACHING)
+#include <tr1/unordered_map>
+namespace libzippp {
+   typedef std::tr1::unordered_map<std::string, libzippp_int64> entry_map;
+}
 #endif
 
 namespace libzippp {
@@ -338,6 +358,13 @@ namespace libzippp {
         zip* zipHandle;
         OpenMode mode;
         std::string password;
+#ifdef USE_ENTRY_CACHING
+        entry_map entries_;
+
+        void populateEntries();
+#endif
+        libzippp_int64 nameLocate(std::string const& name, bool excludeDirectories,
+              bool caseSensitive, State state) const;
         
         //generic method to create ZipEntry
         ZipEntry createEntry(struct zip_stat* stat) const;
