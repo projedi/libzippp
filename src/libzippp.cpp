@@ -32,8 +32,13 @@
   IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <libzippp-config.h>
+
 #include <zip.h>
 #include <errno.h>
+#ifdef USE_MALLOC
+#include <cstdlib>
+#endif
 
 #include "libzippp.h"
 
@@ -53,7 +58,11 @@ string ZipEntry::readAsText(ZipArchive::State state) const {
     if (content==NULL) { return string(); } //happen if the ZipArchive has been closed
     
     string str(content, size);
+#ifdef USE_MALLOC
+    free(content);
+#else
     delete[] content;
+#endif
     return str;
 }
 
@@ -289,7 +298,11 @@ void* ZipArchive::readEntry(const ZipEntry& zipEntry, bool asText, State state) 
         libzippp_uint64 size = zipEntry.getSize();
         libzippp_int64 isize = (libzippp_int64)size; //there will be a warning here, but unavoidable...
         
+#ifdef USE_MALLOC
+        char* data = (char*)calloc(isize + (asText ? 1 : 0), sizeof(char));
+#else
         char* data = new char[isize+(asText ? 1 : 0)];
+#endif
         libzippp_int64 result = zip_fread(zipFile, data, size);
         zip_fclose(zipFile);
         
@@ -299,7 +312,11 @@ void* ZipArchive::readEntry(const ZipEntry& zipEntry, bool asText, State state) 
         if (result==isize) {
             return data;
         } else { //unexpected number of bytes read => crash ?
+#ifdef USE_MALLOC
+            free(data);
+#else
             delete[] data;
+#endif
         }
     } else {
         //unable to read the entry => crash ?

@@ -9,6 +9,7 @@ SET(VERSION "0.1")
 
 SET(LIBZIP_ROOT "lib/libzip-0.11.2" CACHE STRING "Path to libzip")
 option(USE_ENTRY_CACHING "Store zip index in memory for faster access.")
+option(USE_MALLOC "Use malloc instead of new when allocating arrays of plain data.")
 option(BUILD_TESTS "Build tests" ON)
 
 find_package(LibZip REQUIRED)
