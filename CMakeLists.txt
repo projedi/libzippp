@@ -28,6 +28,7 @@ target_link_libraries(libzippp_shared ${LIBZIP_LIBRARIES})
 
 add_definitions(-DLIBZIPPP_EXPORTS)
 ADD_LIBRARY(libzippp_static STATIC "src/libzippp.cpp")
+SET_TARGET_PROPERTIES(libzippp_static PROPERTIES OUTPUT_NAME zippp_static)
 target_link_libraries(libzippp_static ${LIBZIP_LIBRARIES})
 
 install(TARGETS libzippp_shared
